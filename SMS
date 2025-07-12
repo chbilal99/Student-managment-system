@@ -1,0 +1,122 @@
+#include <iostream>    //Author : Muhammad Bilal
+#include <fstream>
+#include "student.h"
+using namespace std;
+
+void addStudent() {
+    ofstream outfile("data.txt", ios::app);
+    string name, course;
+    int roll;
+    float marks;
+    cout << "Enter Roll No: "; cin >> roll;
+    cin.ignore();
+    cout << "Enter Name: "; getline(cin, name);
+    cout << "Enter Course: "; getline(cin, course);
+    cout << "Enter Marks: "; cin >> marks;
+    outfile << roll << '\n' << name << '\n' << course << '\n' << marks << '\n';
+    outfile.close();
+    cout << "Student added successfully!\n";
+}
+
+void viewStudents() {
+    ifstream infile("data.txt");
+    int roll;
+    string name, course;
+    float marks;
+    while (infile >> roll >> ws && getline(infile, name) && getline(infile, course) && infile >> marks) {
+        Student s(name, roll, course, marks);
+        s.display();
+        cout << "-------------------------\n";
+    }
+    infile.close();
+}
+
+void searchStudent() {
+    ifstream infile("data.txt");
+    int roll, searchRoll;
+    string name, course;
+    float marks;
+    cout << "Enter Roll No to search: "; cin >> searchRoll;
+    bool found = false;
+    while (infile >> roll >> ws && getline(infile, name) && getline(infile, course) && infile >> marks) {
+        if (roll == searchRoll) {
+            Student s(name, roll, course, marks);
+            s.display();
+            found = true;
+            break;
+        }
+    }
+    if (!found) cout << "Student not found!\n";
+    infile.close();
+}
+
+void updateStudent() {
+    ifstream infile("data.txt");
+    ofstream tempFile("temp.txt");
+    int roll, searchRoll;
+    string name, course;
+    float marks;
+    cout << "Enter Roll No to update: "; cin >> searchRoll;
+    bool found = false;
+    while (infile >> roll >> ws && getline(infile, name) && getline(infile, course) && infile >> marks) {
+        if (roll == searchRoll) {
+            cin.ignore();
+            cout << "Enter New Name: "; getline(cin, name);
+            cout << "Enter New Course: "; getline(cin, course);
+            cout << "Enter New Marks: "; cin >> marks;
+            found = true;
+        }
+        tempFile << (found ? searchRoll : roll) << '\n' << name << '\n' << course << '\n' << marks << '\n';
+        if (found) found = false;
+    }
+    infile.close();
+    tempFile.close();
+    remove("data.txt");
+    rename("temp.txt", "data.txt");
+    cout << "Student updated!\n";
+}
+
+void deleteStudent() {
+    ifstream infile("data.txt");
+    ofstream tempFile("temp.txt");
+    int roll, deleteRoll;
+    string name, course;
+    float marks;
+    cout << "Enter Roll No to delete: "; cin >> deleteRoll;
+    bool deleted = false;
+    while (infile >> roll >> ws && getline(infile, name) && getline(infile, course) && infile >> marks) {
+        if (roll == deleteRoll) {
+            deleted = true;
+            continue;
+        }
+        tempFile << roll << '\n' << name << '\n' << course << '\n' << marks << '\n';
+    }
+    infile.close();
+    tempFile.close();
+    remove("data.txt");
+    rename("temp.txt", "data.txt");
+    if (deleted)
+        cout << "Student deleted!\n";
+    else
+        cout << "Student not found!\n";
+}
+
+int main() {
+    int choice;
+    do {
+        cout << "\n--- Student Management System ---\n";
+        cout << "1. Add Student\n2. View Students\n3. Search Student\n4. Update Student\n5. Delete Student\n6. Exit\n";
+        cout << "Enter choice: ";
+        cin >> choice;
+        switch (choice) {
+            case 1: addStudent(); break;
+            case 2: viewStudents(); break;
+            case 3: searchStudent(); break;
+            case 4: updateStudent(); break;
+            case 5: deleteStudent(); break;
+            case 6: cout << "Exiting...\n"; break;
+            default: cout << "Invalid choice!\n";
+        }
+    } while (choice != 6);
+    return 0;
+}
