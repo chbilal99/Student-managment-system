@@ -1,0 +1,176 @@
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+// Utility class for hashing
+class PasswordUtils {
+    public static String hash(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hashedBytes = md.digest(password.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashedBytes) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error hashing password", e);
+        }
+    }
+}
+
+// User class
+class User {
+    private String username;
+    private String passwordHash;
+
+    public User(String username, String password) {
+        setUsername(username);
+        setPassword(password);
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        if (username == null || username.trim().isEmpty())
+            throw new IllegalArgumentException("Username cannot be empty.");
+        this.username = username.trim();
+    }
+
+    public void setPassword(String password) {
+        if (password == null || password.length() < 4)
+            throw new IllegalArgumentException("Password must be at least 4 characters.");
+        this.passwordHash = PasswordUtils.hash(password);
+    }
+
+    public boolean checkPassword(String password) {
+        return this.passwordHash.equals(PasswordUtils.hash(password));
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+}
+
+// LoginSystem class
+class LoginSystem {
+    private Map<String, User> users = new HashMap<>();
+    private static final String FILE_NAME = "users.txt";
+
+    public LoginSystem() {
+        loadUsersFromFile();
+    }
+
+    public boolean registerUser(String username, String password) {
+        if (users.containsKey(username)) {
+            System.out.println("❌ Username already exists.");
+            return false;
+        }
+
+        try {
+            User user = new User(username, password);
+            users.put(username, user);
+            saveUsersToFile();
+            System.out.println("✅ Registration successful for: " + username);
+            return true;
+        } catch (IllegalArgumentException e) {
+            System.out.println("⚠️ " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean loginUser(String username, String password) {
+        User user = users.get(username);
+        if (user == null) {
+            System.out.println("❌ User not found.");
+            return false;
+        }
+
+        if (user.checkPassword(password)) {
+            System.out.println("✅ Login successful! Welcome, " + username + "!");
+            return true;
+        } else {
+            System.out.println("❌ Incorrect password.");
+            return false;
+        }
+    }
+
+    private void saveUsersToFile() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_NAME))) {
+            for (User u : users.values()) {
+                writer.write(u.getUsername() + "," + u.getPasswordHash());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("⚠️ Error saving users: " + e.getMessage());
+        }
+    }
+
+    private void loadUsersFromFile() {
+        File file = new File(FILE_NAME);
+        if (!file.exists()) return;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",", 2);
+                if (parts.length == 2) {
+                    User user = new User(parts[0], "temp");
+                    // Directly inject hash into user object (reflection)
+                    java.lang.reflect.Field field = User.class.getDeclaredField("passwordHash");
+                    field.setAccessible(true);
+                    field.set(user, parts[1]);
+                    users.put(parts[0], user);
+                }
+            }
+            System.out.println("📂 Loaded " + users.size() + " user(s) from file.");
+        } catch (Exception e) {
+            System.out.println("⚠️ Error loading users: " + e.getMessage());
+        }
+    }
+}
+
+// Main class
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        LoginSystem system = new LoginSystem();
+        boolean running = true;
+
+        System.out.println("🔐 Welcome to the Secure Login System!");
+        while (running) {
+            System.out.println("\n1) Register");
+            System.out.println("2) Login");
+            System.out.println("3) Exit");
+            System.out.print("Choice: ");
+            String choice = sc.nextLine().trim();
+
+            switch (choice) {
+                case "1":
+                    System.out.print("Enter username: ");
+                    String ru = sc.nextLine().trim();
+                    System.out.print("Enter password: ");
+                    String rp = sc.nextLine();
+                    system.registerUser(ru, rp);
+                    break;
+                case "2":
+                    System.out.print("Enter username: ");
+                    String lu = sc.nextLine().trim();
+                    System.out.print("Enter password: ");
+                    String lp = sc.nextLine();
+                    system.loginUser(lu, lp);
+                    break;
+                case "3":
+                    running = false;
+                    System.out.println("👋 Goodbye!");
+                    break;
+                default:
+                    System.out.println("⚠️ Invalid choice.");
+            }
+        }
+        sc.close();
+    }
+}
